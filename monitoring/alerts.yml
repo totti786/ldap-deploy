@@ -1,0 +1,138 @@
+groups:
+  - name: ldap_alerts
+    interval: 30s
+    rules:
+      - alert: LDAPDown
+        expr: up{job="openldap"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LDAP server is down"
+          description: "LDAP server {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: LDAPHighConnectionCount
+        expr: ldap_connections_current > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High LDAP connection count"
+          description: "LDAP server {{ $labels.instance }} has {{ $value }} active connections."
+
+      - alert: LDAPSlowQueries
+        expr: histogram_quantile(0.95, rate(ldap_operation_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow LDAP queries detected"
+          description: "95th percentile of LDAP operation duration is {{ $value }}s on {{ $labels.instance }}."
+
+      - alert: LDAPBindFailures
+        expr: rate(ldap_bind_failures_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High LDAP bind failure rate"
+          description: "LDAP server {{ $labels.instance }} has {{ $value }} bind failures per second."
+
+      - alert: LDAPReplicationLag
+        expr: ldap_replication_lag_seconds > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LDAP replication lag detected"
+          description: "LDAP replication lag is {{ $value }}s on {{ $labels.instance }}."
+
+  - name: kerberos_alerts
+    interval: 30s
+    rules:
+      - alert: KerberosDown
+        expr: up{job="kerberos"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kerberos KDC is down"
+          description: "Kerberos KDC {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: KerberosHighAuthFailures
+        expr: rate(kerberos_auth_failures_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Kerberos authentication failures"
+          description: "Kerberos KDC {{ $labels.instance }} has {{ $value }} auth failures per second."
+
+      - alert: KerberosTicketExpiration
+        expr: kerberos_tickets_expiring_soon > 100
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "Many Kerberos tickets expiring soon"
+          description: "{{ $value }} Kerberos tickets will expire within the next hour."
+
+  - name: samba_alerts
+    interval: 30s
+    rules:
+      - alert: SambaDown
+        expr: up{job="samba"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Samba server is down"
+          description: "Samba server {{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: SambaHighConnections
+        expr: samba_active_connections > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Samba connection count"
+          description: "Samba server {{ $labels.instance }} has {{ $value }} active connections."
+
+      - alert: SambaShareUnavailable
+        expr: samba_share_available == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Samba share unavailable"
+          description: "Samba share {{ $labels.share }} is unavailable on {{ $labels.instance }}."
+
+  - name: system_alerts
+    interval: 30s
+    rules:
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}."
+
+      - alert: HighDiskUsage
+        expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }} for {{ $labels.mountpoint }}."
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}."

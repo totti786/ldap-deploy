@@ -1,0 +1,12 @@
+---
+kerberos_packages:
+  - krb5-kdc
+  - krb5-admin-server
+  - krb5-user
+
+krb5_config_dir: /etc/krb5kdc
+krb5_log_dir: /var/log/krb5
+
+krb5_supported_enctypes:
+  - aes256-cts-hmac-sha1-96
+  - aes128-cts-hmac-sha1-96

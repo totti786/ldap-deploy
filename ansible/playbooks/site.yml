@@ -1,0 +1,59 @@
+---
+- name: Deploy OpenLDAP Server
+  hosts: ldap_servers
+  become: true
+  roles:
+    - common
+    - openldap-server
+  tags:
+    - openldap
+    - ldap
+
+- name: Deploy phpLDAPadmin
+  hosts: ldap_servers[0]
+  become: true
+  roles:
+    - phpldapadmin
+  tags:
+    - phpldapadmin
+    - admin
+
+- name: Configure LDAP Clients
+  hosts: ldap_clients
+  become: true
+  roles:
+    - common
+    - ldap-client
+  tags:
+    - ldap-clients
+    - clients
+
+- name: Deploy Kerberos KDC
+  hosts: kerberos
+  become: true
+  roles:
+    - common
+    - kerberos
+  tags:
+    - kerberos
+    - kdc
+
+- name: Deploy Samba
+  hosts: samba
+  become: true
+  roles:
+    - common
+    - samba
+  tags:
+    - samba
+    - file-sharing
+
+- name: Setup Monitoring
+  hosts: monitoring
+  become: true
+  roles:
+    - common
+    - ldap-monitoring
+  tags:
+    - monitoring
+    - prometheus

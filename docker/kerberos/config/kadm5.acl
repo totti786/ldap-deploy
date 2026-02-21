@@ -1,0 +1,2 @@
+*/admin@${KRB5_REALM} *
+*@${KRB5_REALM} aci

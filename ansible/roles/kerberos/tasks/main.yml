@@ -1,0 +1,87 @@
+---
+- name: Install Kerberos packages
+  package:
+    name:
+      - krb5-kdc
+      - krb5-admin-server
+      - krb5-user
+      - python3-ldap
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  tags:
+    - packages
+
+- name: Create Kerberos directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop:
+    - /var/log/krb5
+    - /etc/krb5kdc
+  tags:
+    - configuration
+
+- name: Configure krb5.conf
+  template:
+    src: krb5.conf.j2
+    dest: /etc/krb5.conf
+    mode: '0644'
+  tags:
+    - configuration
+
+- name: Configure kdc.conf
+  template:
+    src: kdc.conf.j2
+    dest: /etc/krb5kdc/kdc.conf
+    mode: '0600'
+  tags:
+    - configuration
+
+- name: Configure kadm5.acl
+  template:
+    src: kadm5.acl.j2
+    dest: /etc/krb5kdc/kadm5.acl
+    mode: '0600'
+  tags:
+    - configuration
+
+- name: Initialize Kerberos database
+  command: kdb5_util create -r {{ krb5_realm }} -s -P {{ krb5_admin_password }}
+  args:
+    creates: /etc/krb5kdc/principal
+  tags:
+    - initialization
+
+- name: Create admin principal
+  command: kadmin.local -q "addprinc -pw {{ krb5_admin_password }} admin/admin@{{ krb5_realm }}"
+  args:
+    creates: /etc/krb5kdc/kadm5.keytab
+  tags:
+    - principals
+
+- name: Create kadmin keytab
+  command: kadmin.local -q "ktadd -k /etc/krb5kdc/kadm5.keytab kadmin/admin kadmin/changepw"
+  args:
+    creates: /etc/krb5kdc/kadm5.keytab
+  tags:
+    - keytabs
+
+- name: Enable and start krb5kdc
+  service:
+    name: krb5-kdc
+    state: started
+    enabled: true
+  tags:
+    - service
+
+- name: Enable and start krb5-admin-server
+  service:
+    name: krb5-admin-server
+    state: started
+    enabled: true
+  tags:
+    - service

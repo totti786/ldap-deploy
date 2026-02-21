@@ -1,0 +1,56 @@
+---
+- name: Backup LDAP Database
+  hosts: ldap_servers[0]
+  become: true
+  vars:
+    backup_dir: /var/backups/ldap
+    backup_retention: 30
+
+  tasks:
+    - name: Create backup directory
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0700'
+        owner: root
+        group: root
+
+    - name: Generate backup filename
+      set_fact:
+        backup_file: "{{ backup_dir }}/ldap-backup-{{ ansible_date_time.iso8601_basic_short }}.ldif"
+
+    - name: Backup LDAP database
+      command: slapcat -n 1 -l "{{ backup_file }}"
+      register: backup_result
+      changed_when: backup_result.rc == 0
+
+    - name: Backup LDAP configuration
+      command: slapcat -n 0 -l "{{ backup_dir }}/config-backup-{{ ansible_date_time.iso8601_basic_short }}.ldif"
+      register: config_backup_result
+      changed_when: config_backup_result.rc == 0
+
+    - name: Compress backup files
+      archive:
+        path:
+          - "{{ backup_file }}"
+          - "{{ backup_dir }}/config-backup-{{ ansible_date_time.iso8601_basic_short }}.ldif"
+        dest: "{{ backup_dir }}/ldap-full-backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+        format: gz
+
+    - name: Remove old backup files
+      find:
+        paths: "{{ backup_dir }}"
+        patterns: "ldap-*.ldif,config-*.ldif,ldap-full-backup-*.tar.gz"
+        age: "{{ backup_retention }}d"
+      register: old_backups
+
+    - name: Delete old backups
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_backups.files }}"
+      when: old_backups.files | length > 0
+
+    - name: Display backup summary
+      debug:
+        msg: "Backup completed: {{ backup_dir }}/ldap-full-backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"

@@ -1,0 +1,20 @@
+---
+openldap_packages:
+  - slapd
+  - ldap-utils
+  - python3-ldap
+
+ldap_data_dir: /var/lib/ldap
+ldap_config_dir: /etc/ldap/slapd.d
+ldap_ssl_dir: /etc/ldap/ssl
+
+ldap_tls_enabled: true
+ldap_tls_cert: /etc/ldap/ssl/ldap.crt
+ldap_tls_key: /etc/ldap/ssl/ldap.key
+ldap_tls_ca: /etc/ldap/ssl/ca.crt
+
+ldap_schemas:
+  - core
+  - cosine
+  - inetorgperson
+  - nis

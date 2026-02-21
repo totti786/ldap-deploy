@@ -1,0 +1,22 @@
+---
+samba_domain: EXAMPLE
+samba_realm: example.com
+samba_admin_password: "{{ vault_samba_admin_password }}"
+
+samba_ldap_integration: true
+samba_ldap_url: ldap://ldap.example.com
+samba_ldap_base_dn: dc=example,dc=com
+
+samba_shares:
+  - name: shared
+    path: /srv/samba/shared
+    comment: "Shared Files"
+    writable: yes
+    browseable: yes
+    valid_users: "@Domain Users"
+  - name: backups
+    path: /srv/samba/backups
+    comment: "Backup Share"
+    writable: yes
+    browseable: yes
+    valid_users: "@Domain Admins"

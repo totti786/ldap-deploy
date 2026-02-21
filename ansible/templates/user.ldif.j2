@@ -1,0 +1,22 @@
+dn: uid={{ user_uid }},ou=People,{{ ldap_base_dn }}
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: top
+uid: {{ user_uid }}
+cn: {{ user_cn }}
+sn: {{ user_sn }}
+givenName: {{ user_cn }}
+displayName: {{ user_cn }}
+mail: {{ user_email }}
+uidNumber: {{ uid_number }}
+gidNumber: {{ gid_number }}
+userPassword: {{ user_password }}
+loginShell: {{ user_shell }}
+homeDirectory: {{ user_home }}
+shadowLastChange: 0
+shadowMax: 99999
+shadowWarning: 7
+shadowInactive: -1
+shadowExpire: -1
+shadowFlag: 0

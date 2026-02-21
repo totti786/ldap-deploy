@@ -1,0 +1,4 @@
+username,firstname,lastname,email,group,shell,uid,gid,password
+jdoe,John,Doe,john.doe@example.com,developers,/bin/bash,,10000,SecurePass123!
+asmith,Alice,Smith,alice.smith@example.com,developers,/bin/bash,,10000,SecurePass456!
+bwilson,Bob,Wilson,bob.wilson@example.com,sysadmins,/bin/bash,,10000,AdminPass789!

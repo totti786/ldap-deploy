@@ -1,0 +1,18 @@
+---
+- name: Deploy LDAP Server
+  hosts: ldap_servers
+  become: true
+  vars_files:
+    - ../group_vars/all.yml
+  roles:
+    - openldap-server
+  tasks:
+    - name: Verify LDAP is running
+      command: ldapsearch -x -H ldap://localhost -b "{{ ldap_base_dn }}" "(objectClass=*)" dn
+      register: ldap_test
+      changed_when: false
+      failed_when: ldap_test.rc != 0
+
+    - name: Display LDAP status
+      debug:
+        msg: "LDAP server {{ inventory_hostname }} is running and responding"

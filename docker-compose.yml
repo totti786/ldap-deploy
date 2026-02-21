@@ -1,0 +1,177 @@
+version: '3.8'
+
+x-ldap-env: &ldap-env
+  LDAP_ORGANISATION: ${LDAP_ORGANISATION:-Example Corp}
+  LDAP_DOMAIN: ${LDAP_DOMAIN:-example.com}
+  LDAP_BASE_DN: ${LDAP_BASE_DN:-dc=example,dc=com}
+  LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin}
+  LDAP_CONFIG_PASSWORD: ${LDAP_CONFIG_PASSWORD:-config}
+  LDAP_READONLY_USER: ${LDAP_READONLY_USER:-true}
+  LDAP_READONLY_USER_USERNAME: ${LDAP_READONLY_USER_USERNAME:-readonly}
+  LDAP_READONLY_USER_PASSWORD: ${LDAP_READONLY_USER_PASSWORD:-readonly}
+  LDAP_RFC2307BIS_SCHEMA: ${LDAP_RFC2307BIS_SCHEMA:-false}
+  LDAP_BACKEND: ${LDAP_BACKEND:-MDB}
+  LDAP_TLS: ${LDAP_TLS:-true}
+  LDAP_TLS_CRT_FILENAME: ${LDAP_TLS_CRT_FILENAME:-ldap.crt}
+  LDAP_TLS_KEY_FILENAME: ${LDAP_TLS_KEY_FILENAME:-ldap.key}
+  LDAP_TLS_DH_PARAM_FILENAME: ${LDAP_TLS_DH_PARAM_FILENAME:-dhparam.pem}
+  LDAP_TLS_CA_CRT_FILENAME: ${LDAP_TLS_CA_CRT_FILENAME:-ca.crt}
+  LDAP_TLS_ENFORCE: ${LDAP_TLS_ENFORCE:-false}
+  LDAP_TLS_CIPHER_SUITE: ${LDAP_TLS_CIPHER_SUITE:-SECURE256:-VERS-SSL3.0}
+  LDAP_TLS_VERIFY_CLIENT: ${LDAP_TLS_VERIFY_CLIENT:-demand}
+  LDAP_REPLICATION: ${LDAP_REPLICATION:-false}
+  KEEP_EXISTING_CONFIG: ${KEEP_EXISTING_CONFIG:-false}
+  LDAP_REMOVE_CONFIG_AFTER_SETUP: ${LDAP_REMOVE_CONFIG_AFTER_SETUP:-true}
+  LDAP_SSL_HELPER_PREFIX: ${LDAP_SSL_HELPER_PREFIX:-ldap}
+
+services:
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: openldap
+    hostname: ldap.${LDAP_DOMAIN:-example.com}
+    environment:
+      <<: *ldap-env
+    volumes:
+      - openldap-data:/var/lib/ldap
+      - openldap-config:/etc/ldap/slapd.d
+      - openldap-certs:/container/service/slapd/assets/certs
+      - ./docker/openldap/ldif:/container/service/slapd/assets/config/bootstrap/ldif/50-bootstrap
+    ports:
+      - "389:389"
+      - "636:636"
+    networks:
+      - ldap-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ldapsearch", "-x", "-H", "ldap://localhost", "-b", "${LDAP_BASE_DN:-dc=example,dc=com}", "(objectClass=*)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.openldap.rule=HostSNI(`ldap.${LDAP_DOMAIN:-example.com}`)"
+      - "traefik.tcp.routers.openldap.entrypoints=websecure"
+      - "traefik.tcp.routers.openldap.tls=true"
+      - "traefik.tcp.services.openldap.loadbalancer.server.port=636"
+
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.9.0
+    container_name: phpldapadmin
+    hostname: phpldapadmin.${LDAP_DOMAIN:-example.com}
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: openldap
+      PHPLDAPADMIN_HTTPS: "false"
+      PHPLDAPADMIN_TRUST_PROXY_SSL: "true"
+    depends_on:
+      openldap:
+        condition: service_healthy
+    networks:
+      - ldap-network
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.phpldapadmin.rule=Host(`phpldapadmin.${LDAP_DOMAIN:-example.com}`)"
+      - "traefik.http.routers.phpldapadmin.entrypoints=websecure"
+      - "traefik.http.routers.phpldapadmin.tls=true"
+      - "traefik.http.routers.phpldapadmin.tls.certresolver=letsencrypt"
+      - "traefik.http.services.phpldapadmin.loadbalancer.server.port=80"
+
+  samba:
+    build:
+      context: ./docker/samba
+      dockerfile: Dockerfile
+    container_name: samba
+    hostname: samba.${LDAP_DOMAIN:-example.com}
+    environment:
+      SAMBA_DOMAIN: ${SAMBA_DOMAIN:-EXAMPLE}
+      SAMBA_REALM: ${LDAP_DOMAIN:-example.com}
+      SAMBA_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin}
+      LDAP_URL: ldap://openldap
+      LDAP_BASE_DN: ${LDAP_BASE_DN:-dc=example,dc=com}
+      LDAP_ADMIN_DN: cn=admin,${LDAP_BASE_DN:-dc=example,dc=com}
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin}
+    volumes:
+      - samba-data:/var/lib/samba
+      - samba-config:/etc/samba
+      - samba-logs:/var/log/samba
+    ports:
+      - "139:139"
+      - "445:445"
+    depends_on:
+      openldap:
+        condition: service_healthy
+    networks:
+      - ldap-network
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=false"
+
+  kerberos:
+    build:
+      context: ./docker/kerberos
+      dockerfile: Dockerfile
+    container_name: kerberos
+    hostname: kdc.${LDAP_DOMAIN:-example.com}
+    environment:
+      KRB5_REALM: ${KRB5_REALM:-EXAMPLE.COM}
+      KRB5_KDC: kdc.${LDAP_DOMAIN:-example.com}
+      KRB5_ADMIN_PASSWORD: ${KRB5_ADMIN_PASSWORD:-admin}
+      LDAP_URL: ldap://openldap
+      LDAP_BASE_DN: ${LDAP_BASE_DN:-dc=example,dc=com}
+      LDAP_ADMIN_DN: cn=admin,${LDAP_BASE_DN:-dc=example,dc=com}
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin}
+    volumes:
+      - kerberos-data:/var/lib/krb5kdc
+      - kerberos-keytabs:/etc/krb5.keytabs
+    ports:
+      - "88:88/udp"
+      - "88:88/tcp"
+      - "464:464/udp"
+      - "464:464/tcp"
+      - "749:749/tcp"
+    depends_on:
+      openldap:
+        condition: service_healthy
+    networks:
+      - ldap-network
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=false"
+
+  ldap-backup:
+    image: osixia/openldap:1.5.0
+    container_name: ldap-backup
+    environment:
+      <<: *ldap-env
+    volumes:
+      - openldap-data:/var/lib/ldap:ro
+      - openldap-config:/etc/ldap/slapd.d:ro
+      - ./backups:/backups
+      - ./scripts/backup/backup-ldap.sh:/backup.sh:ro
+    depends_on:
+      openldap:
+        condition: service_healthy
+    networks:
+      - ldap-network
+    restart: "no"
+    entrypoint: ["/bin/bash", "/backup.sh"]
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  ldap-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  openldap-data:
+  openldap-config:
+  openldap-certs:
+  samba-data:
+  samba-config:
+  samba-logs:
+  kerberos-data:
+  kerberos-keytabs:

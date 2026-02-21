@@ -1,0 +1,13 @@
+---
+samba_packages:
+  - samba
+  - samba-common-bin
+  - winbind
+
+samba_config_dir: /etc/samba
+samba_log_dir: /var/log/samba
+samba_share_dir: /srv/samba
+
+samba_workgroup: WORKGROUP
+samba_realm: example.com
+samba_server_string: "Samba Server %v"

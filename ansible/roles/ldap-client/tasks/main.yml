@@ -1,0 +1,72 @@
+---
+- name: Install LDAP client packages
+  package:
+    name:
+      - libnss-ldap
+      - libpam-ldap
+      - ldap-utils
+      - nslcd
+      - nscd
+    state: present
+  tags:
+    - packages
+
+- name: Configure nslcd
+  template:
+    src: nslcd.conf.j2
+    dest: /etc/nslcd.conf
+    mode: '0600'
+    owner: root
+    group: root
+  notify: Restart nslcd
+  tags:
+    - configuration
+
+- name: Configure nsswitch
+  template:
+    src: nsswitch.conf.j2
+    dest: /etc/nsswitch.conf
+    mode: '0644'
+  notify: Restart nscd
+  tags:
+    - configuration
+
+- name: Configure PAM for LDAP
+  template:
+    src: pam_ldap.conf.j2
+    dest: /etc/pam.d/common-auth
+    mode: '0644'
+  tags:
+    - configuration
+
+- name: Configure PAM session
+  template:
+    src: common-session.j2
+    dest: /etc/pam.d/common-session
+    mode: '0644'
+  tags:
+    - configuration
+
+- name: Enable and start nslcd
+  service:
+    name: nslcd
+    state: started
+    enabled: true
+  tags:
+    - service
+
+- name: Enable and start nscd
+  service:
+    name: nscd
+    state: started
+    enabled: true
+  tags:
+    - service
+
+- name: Verify LDAP connectivity
+  command: getent passwd
+  register: getent_result
+  changed_when: false
+  failed_when: getent_result.rc != 0
+  tags:
+    - verify

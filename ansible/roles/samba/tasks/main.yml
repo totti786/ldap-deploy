@@ -1,0 +1,78 @@
+---
+- name: Install Samba packages
+  package:
+    name:
+      - samba
+      - samba-common-bin
+      - winbind
+      - libnss-winbind
+      - libpam-winbind
+    state: present
+  tags:
+    - packages
+
+- name: Create Samba directories
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+    owner: root
+    group: root
+  loop:
+    - { path: /var/log/samba, mode: '0755' }
+    - { path: /var/lib/samba/netlogon, mode: '0755' }
+    - { path: /var/lib/samba/profiles, mode: '0755' }
+    - { path: /srv/samba/shared, mode: '0775' }
+    - { path: /srv/samba/backups, mode: '0770' }
+  tags:
+    - configuration
+
+- name: Configure smb.conf
+  template:
+    src: smb.conf.j2
+    dest: /etc/samba/smb.conf
+    mode: '0644'
+    validate: testparm -s %s
+  notify: Restart smbd
+  tags:
+    - configuration
+
+- name: Configure nsswitch for winbind
+  template:
+    src: nsswitch-winbind.conf.j2
+    dest: /etc/nsswitch.conf
+    mode: '0644'
+  tags:
+    - configuration
+
+- name: Enable and start smbd
+  service:
+    name: smbd
+    state: started
+    enabled: true
+  tags:
+    - service
+
+- name: Enable and start nmbd
+  service:
+    name: nmbd
+    state: started
+    enabled: true
+  tags:
+    - service
+
+- name: Enable and start winbind
+  service:
+    name: winbind
+    state: started
+    enabled: true
+  tags:
+    - service
+
+- name: Verify Samba is running
+  command: smbclient -L localhost -U%
+  register: samba_verify
+  changed_when: false
+  failed_when: samba_verify.rc != 0
+  tags:
+    - verify

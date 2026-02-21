@@ -1,0 +1,55 @@
+---
+- name: Include OS-specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution | lower }}-{{ ansible_distribution_version }}.yml"
+    - "{{ ansible_distribution | lower }}.yml"
+    - "{{ ansible_os_family | lower }}.yml"
+    - "default.yml"
+  tags:
+    - always
+
+- name: Install common packages
+  package:
+    name: "{{ common_packages }}"
+    state: present
+  tags:
+    - packages
+
+- name: Configure timezone
+  timezone:
+    name: "{{ timezone | default('UTC') }}"
+  tags:
+    - configuration
+
+- name: Configure hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+  when: ansible_hostname != inventory_hostname
+  tags:
+    - configuration
+
+- name: Configure hosts file
+  template:
+    src: hosts.j2
+    dest: /etc/hosts
+    mode: '0644'
+  tags:
+    - configuration
+
+- name: Configure SSH hardening
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    mode: '0600'
+    validate: sshd -t -f %s
+  notify: Restart SSH
+  tags:
+    - configuration
+    - security
+
+- name: Configure firewall
+  include_tasks: firewall.yml
+  tags:
+    - firewall
+    - security

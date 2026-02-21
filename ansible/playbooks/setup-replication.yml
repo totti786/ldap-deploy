@@ -1,0 +1,18 @@
+---
+- name: Setup LDAP Replication
+  hosts: ldap_servers
+  become: true
+  vars_files:
+    - ../group_vars/all.yml
+  roles:
+    - ldap-replication
+  tasks:
+    - name: Verify replication status
+      command: ldapsearch -x -H ldap://localhost -b "cn=config" "(olcSyncrepl=*)" -LLL
+      register: repl_status
+      changed_when: false
+      delegate_to: "{{ groups['ldap_servers'][0] }}"
+
+    - name: Display replication configuration
+      debug:
+        msg: "{{ repl_status.stdout }}"

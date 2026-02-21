@@ -1,0 +1,29 @@
+---
+ldap_domain: example.com
+ldap_base_dn: dc=example,dc=com
+ldap_organisation: "Example Corp"
+ldap_admin_password: "{{ vault_ldap_admin_password }}"
+ldap_config_password: "{{ vault_ldap_config_password }}"
+ldap_readonly_password: "{{ vault_ldap_readonly_password }}"
+
+ldap_server_ports:
+  - 389
+  - 636
+
+ldap_tls_enabled: true
+ldap_tls_cert: /etc/ldap/ssl/ldap.crt
+ldap_tls_key: /etc/ldap/ssl/ldap.key
+ldap_tls_ca: /etc/ldap/ssl/ca.crt
+
+ldap_replication: false
+ldap_replication_hosts: []
+
+ldap_ppolicy_enabled: true
+ldap_ppolicy_min_length: 8
+ldap_ppolicy_max_age: 90
+ldap_ppolicy_history: 5
+ldap_ppolicy_max_failure: 5
+
+ldap_backup_enabled: true
+ldap_backup_retention: 30
+ldap_backup_schedule: "0 2 * * *"

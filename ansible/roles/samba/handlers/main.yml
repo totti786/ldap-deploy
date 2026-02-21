@@ -1,0 +1,15 @@
+---
+- name: Restart smbd
+  service:
+    name: smbd
+    state: restarted
+
+- name: Restart nmbd
+  service:
+    name: nmbd
+    state: restarted
+
+- name: Restart winbind
+  service:
+    name: winbind
+    state: restarted

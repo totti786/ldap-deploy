@@ -1,0 +1,133 @@
+version: '3.8'
+
+x-ldap-env: &ldap-env
+  LDAP_ORGANISATION: ${LDAP_ORGANISATION:-Example Corp}
+  LDAP_DOMAIN: ${LDAP_DOMAIN:-example.com}
+  LDAP_BASE_DN: ${LDAP_BASE_DN:-dc=example,dc=com}
+  LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin}
+
+services:
+  openldap-primary:
+    image: osixia/openldap:1.5.0
+    container_name: openldap-primary
+    hostname: ldap1.${LDAP_DOMAIN:-example.com}
+    environment:
+      <<: *ldap-env
+      LDAP_REPLICATION: "true"
+      LDAP_REPLICATION_CONFIG_SYNCPROV: binddn="cn=admin,cn=config" bindmethod=simple credentials="${LDAP_CONFIG_PASSWORD}" searchbase="cn=config" type=refreshAndPersist retry="60 +" timeout=1 starttls=critical
+      LDAP_REPLICATION_DB_SYNCPROV: binddn="cn=admin,${LDAP_BASE_DN}" bindmethod=simple credentials="${LDAP_ADMIN_PASSWORD}" searchbase="${LDAP_BASE_DN}" type=refreshAndPersist interval=00:00:00:10 retry="60 +" timeout=1 starttls=critical
+      LDAP_REPLICATION_HOSTS: "#PYTHON2BASH:['ldap://ldap1.${LDAP_DOMAIN}','ldap://ldap2.${LDAP_DOMAIN}','ldap://ldap3.${LDAP_DOMAIN}']"
+    volumes:
+      - openldap-primary-data:/var/lib/ldap
+      - openldap-primary-config:/etc/ldap/slapd.d
+      - openldap-primary-certs:/container/service/slapd/assets/certs
+    ports:
+      - "389:389"
+      - "636:636"
+    networks:
+      ldap-ha-network:
+        aliases:
+          - ldap1.${LDAP_DOMAIN:-example.com}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ldapsearch", "-x", "-H", "ldap://localhost", "-b", "${LDAP_BASE_DN:-dc=example,dc=com}", "(objectClass=*)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  openldap-secondary:
+    image: osixia/openldap:1.5.0
+    container_name: openldap-secondary
+    hostname: ldap2.${LDAP_DOMAIN:-example.com}
+    environment:
+      <<: *ldap-env
+      LDAP_REPLICATION: "true"
+      LDAP_REPLICATION_CONFIG_SYNCPROV: binddn="cn=admin,cn=config" bindmethod=simple credentials="${LDAP_CONFIG_PASSWORD}" searchbase="cn=config" type=refreshAndPersist retry="60 +" timeout=1 starttls=critical
+      LDAP_REPLICATION_DB_SYNCPROV: binddn="cn=admin,${LDAP_BASE_DN}" bindmethod=simple credentials="${LDAP_ADMIN_PASSWORD}" searchbase="${LDAP_BASE_DN}" type=refreshAndPersist interval=00:00:00:10 retry="60 +" timeout=1 starttls=critical
+      LDAP_REPLICATION_HOSTS: "#PYTHON2BASH:['ldap://ldap1.${LDAP_DOMAIN}','ldap://ldap2.${LDAP_DOMAIN}','ldap://ldap3.${LDAP_DOMAIN}']"
+    volumes:
+      - openldap-secondary-data:/var/lib/ldap
+      - openldap-secondary-config:/etc/ldap/slapd.d
+      - openldap-secondary-certs:/container/service/slapd/assets/certs
+    ports:
+      - "3890:389"
+      - "6360:636"
+    networks:
+      ldap-ha-network:
+        aliases:
+          - ldap2.${LDAP_DOMAIN:-example.com}
+    restart: unless-stopped
+    depends_on:
+      openldap-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "ldapsearch", "-x", "-H", "ldap://localhost", "-b", "${LDAP_BASE_DN:-dc=example,dc=com}", "(objectClass=*)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  openldap-tertiary:
+    image: osixia/openldap:1.5.0
+    container_name: openldap-tertiary
+    hostname: ldap3.${LDAP_DOMAIN:-example.com}
+    environment:
+      <<: *ldap-env
+      LDAP_REPLICATION: "true"
+      LDAP_REPLICATION_CONFIG_SYNCPROV: binddn="cn=admin,cn=config" bindmethod=simple credentials="${LDAP_CONFIG_PASSWORD}" searchbase="cn=config" type=refreshAndPersist retry="60 +" timeout=1 starttls=critical
+      LDAP_REPLICATION_DB_SYNCPROV: binddn="cn=admin,${LDAP_BASE_DN}" bindmethod=simple credentials="${LDAP_ADMIN_PASSWORD}" searchbase="${LDAP_BASE_DN}" type=refreshAndPersist interval=00:00:00:10 retry="60 +" timeout=1 starttls=critical
+      LDAP_REPLICATION_HOSTS: "#PYTHON2BASH:['ldap://ldap1.${LDAP_DOMAIN}','ldap://ldap2.${LDAP_DOMAIN}','ldap://ldap3.${LDAP_DOMAIN}']"
+    volumes:
+      - openldap-tertiary-data:/var/lib/ldap
+      - openldap-tertiary-config:/etc/ldap/slapd.d
+      - openldap-tertiary-certs:/container/service/slapd/assets/certs
+    ports:
+      - "3891:389"
+      - "6361:636"
+    networks:
+      ldap-ha-network:
+        aliases:
+          - ldap3.${LDAP_DOMAIN:-example.com}
+    restart: unless-stopped
+    depends_on:
+      openldap-secondary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "ldapsearch", "-x", "-H", "ldap://localhost", "-b", "${LDAP_BASE_DN:-dc=example,dc=com}", "(objectClass=*)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  haproxy:
+    image: haproxy:2.8-alpine
+    container_name: ldap-haproxy
+    volumes:
+      - ./docker/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "3899:389"
+      - "6369:636"
+      - "8404:8404"
+    networks:
+      - ldap-ha-network
+    restart: unless-stopped
+    depends_on:
+      - openldap-primary
+      - openldap-secondary
+      - openldap-tertiary
+
+networks:
+  ldap-ha-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16
+
+volumes:
+  openldap-primary-data:
+  openldap-primary-config:
+  openldap-primary-certs:
+  openldap-secondary-data:
+  openldap-secondary-config:
+  openldap-secondary-certs:
+  openldap-tertiary-data:
+  openldap-tertiary-config:
+  openldap-tertiary-certs:

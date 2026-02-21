@@ -1,0 +1,51 @@
+dn: ou=People,dc=example,dc=com
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Groups,dc=example,dc=com
+objectClass: organizationalUnit
+ou: Groups
+
+dn: ou=Services,dc=example,dc=com
+objectClass: organizationalUnit
+ou: Services
+
+dn: ou=Sudoers,dc=example,dc=com
+objectClass: organizationalUnit
+ou: Sudoers
+
+dn: cn=developers,ou=Groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: developers
+member: uid=user1,ou=People,dc=example,dc=com
+description: Development Team
+
+dn: cn=sysadmins,ou=Groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: sysadmins
+member: uid=admin,ou=People,dc=example,dc=com
+description: System Administrators
+
+dn: uid=readonly,ou=Services,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: readonly
+sn: Service
+givenName: ReadOnly
+cn: ReadOnly Service Account
+displayName: ReadOnly Service Account
+uidNumber: 10000
+gidNumber: 10000
+userPassword: {SSHA}readonlypasswordhash
+loginShell: /usr/sbin/nologin
+homeDirectory: /nonexistent
+
+dn: cn=admins,ou=Sudoers,dc=example,dc=com
+objectClass: sudoRole
+cn: admins
+sudoUser: ALL
+sudoHost: ALL
+sudoCommand: ALL
+sudoOption: !authenticate
+description: Full sudo access for admins

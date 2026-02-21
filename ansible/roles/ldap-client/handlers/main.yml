@@ -1,0 +1,10 @@
+---
+- name: Restart nslcd
+  service:
+    name: nslcd
+    state: restarted
+
+- name: Restart nscd
+  service:
+    name: nscd
+    state: restarted

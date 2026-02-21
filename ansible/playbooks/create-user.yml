@@ -1,0 +1,65 @@
+---
+- name: Create LDAP User
+  hosts: ldap_servers[0]
+  become: true
+  vars:
+    user_uid: ""
+    user_cn: ""
+    user_sn: ""
+    user_email: ""
+    user_password: ""
+    user_group: "users"
+    user_shell: "/bin/bash"
+    user_home: "/home/{{ user_uid }}"
+    uid_number: ""
+    gid_number: "10000"
+
+  tasks:
+    - name: Validate required variables
+      fail:
+        msg: "Required variable {{ item }} is not defined"
+      when: vars[item] is not defined or vars[item] == ""
+      loop:
+        - user_uid
+        - user_cn
+        - user_sn
+        - user_email
+        - user_password
+
+    - name: Generate UID number if not provided
+      set_fact:
+        uid_number: "{{ 10000 + (user_uid | hash('md5') | int(0, 16) % 50000) }}"
+      when: uid_number == ""
+
+    - name: Create LDIF for user
+      template:
+        src: templates/user.ldif.j2
+        dest: "/tmp/{{ user_uid }}.ldif"
+        mode: '0600'
+
+    - name: Add user to LDAP
+      command: ldapadd -x -H ldap://localhost -D "cn=admin,{{ ldap_base_dn }}" -w "{{ ldap_admin_password }}" -f "/tmp/{{ user_uid }}.ldif"
+      register: ldap_add
+      changed_when: "'adding new entry' in ldap_add.stdout"
+      failed_when: ldap_add.rc != 0 and 'already exists' not in ldap_add.stderr
+
+    - name: Add user to group
+      command: ldapmodify -x -H ldap://localhost -D "cn=admin,{{ ldap_base_dn }}" -w "{{ ldap_admin_password }}"
+      args:
+        stdin: |
+          dn: cn={{ user_group }},ou=Groups,{{ ldap_base_dn }}
+          changetype: modify
+          add: member
+          member: uid={{ user_uid }},ou=People,{{ ldap_base_dn }}
+      register: group_add
+      changed_when: "'modifying entry' in group_add.stdout"
+      failed_when: group_add.rc != 0 and 'already exists' not in group_add.stderr
+
+    - name: Clean up temporary files
+      file:
+        path: "/tmp/{{ user_uid }}.ldif"
+        state: absent
+
+    - name: Display result
+      debug:
+        msg: "User {{ user_uid }} created successfully with UID {{ uid_number }}"

@@ -1,0 +1,98 @@
+---
+- name: Install OpenLDAP packages
+  package:
+    name:
+      - slapd
+      - ldap-utils
+      - python3-ldap
+      - openssl
+    state: present
+  tags:
+    - packages
+
+- name: Create LDAP directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: openldap
+    group: openldap
+  loop:
+    - /var/lib/ldap
+    - /etc/ldap/slapd.d
+    - /etc/ldap/ssl
+  tags:
+    - configuration
+
+- name: Generate TLS certificates
+  command: >
+    openssl req -x509 -nodes -days 3650
+    -newkey rsa:2048
+    -keyout {{ ldap_tls_key }}
+    -out {{ ldap_tls_cert }}
+    -subj "/C=US/ST=State/L=City/O={{ ldap_organisation }}/CN={{ ansible_hostname }}.{{ ldap_domain }}"
+  args:
+    creates: "{{ ldap_tls_cert }}"
+  notify: Restart slapd
+  tags:
+    - tls
+
+- name: Set TLS certificate permissions
+  file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+    owner: openldap
+    group: openldap
+  loop:
+    - { path: "{{ ldap_tls_cert }}", mode: '0644' }
+    - { path: "{{ ldap_tls_key }}", mode: '0600' }
+  tags:
+    - tls
+
+- name: Configure slapd
+  template:
+    src: slapd.default.j2
+    dest: /etc/default/slapd
+    mode: '0644'
+  notify: Restart slapd
+  tags:
+    - configuration
+
+- name: Create base DN structure
+  template:
+    src: base-dn.ldif.j2
+    dest: /tmp/base-dn.ldif
+    mode: '0600'
+  tags:
+    - configuration
+
+- name: Add base DN to LDAP
+  command: ldapadd -x -H ldap://localhost -D "cn=admin,{{ ldap_base_dn }}" -w "{{ ldap_admin_password }}" -f /tmp/base-dn.ldif
+  register: base_dn_result
+  changed_when: "'adding new entry' in base_dn_result.stdout"
+  failed_when: base_dn_result.rc != 0 and 'already exists' not in base_dn_result.stderr
+  tags:
+    - configuration
+
+- name: Clean up temporary files
+  file:
+    path: /tmp/base-dn.ldif
+    state: absent
+  tags:
+    - configuration
+
+- name: Enable and start slapd
+  service:
+    name: slapd
+    state: started
+    enabled: true
+  tags:
+    - service
+
+- name: Verify LDAP is running
+  command: ldapsearch -x -H ldap://localhost -b "{{ ldap_base_dn }}" "(objectClass=*)" dn
+  register: ldap_verify
+  changed_when: false
+  failed_when: ldap_verify.rc != 0
+  tags:
+    - verify

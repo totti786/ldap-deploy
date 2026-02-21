@@ -1,0 +1,14 @@
+---
+krb5_realm: EXAMPLE.COM
+krb5_domain: example.com
+krb5_kdc: kdc.example.com
+krb5_admin_password: "{{ vault_krb5_admin_password }}"
+
+krb5_max_life: "24h 0m 0s"
+krb5_max_renewable_life: "7d 0h 0m 0s"
+
+krb5_ldap_integration: true
+krb5_ldap_url: ldap://ldap.example.com
+krb5_ldap_base_dn: dc=example,dc=com
+krb5_ldap_admin_dn: cn=admin,dc=example,dc=com
+krb5_ldap_admin_password: "{{ vault_ldap_admin_password }}"
