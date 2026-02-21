@@ -1,0 +1,16 @@
+---
+- name: Install Prometheus Node Exporter
+  package:
+    name:
+      - prometheus-node-exporter
+    state: present
+  tags:
+    - packages
+
+- name: Enable and start node exporter
+  service:
+    name: prometheus-node-exporter
+    state: started
+    enabled: true
+  tags:
+    - service

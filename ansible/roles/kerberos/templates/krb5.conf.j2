@@ -1,0 +1,27 @@
+[libdefaults]
+    default_realm = {{ krb5_realm }}
+    dns_lookup_realm = false
+    dns_lookup_kdc = true
+    ticket_lifetime = 24h
+    renew_lifetime = 7d
+    forwardable = true
+    rdns = false
+    pkinit_anchors = FILE:/etc/ssl/certs/ca-certificates.crt
+    spake_preauth_groups = edwards25519
+    udp_preference_limit = 1
+
+[realms]
+    {{ krb5_realm }} = {
+        kdc = {{ krb5_kdc | default('kdc.' + krb5_realm.lower()) }}
+        admin_server = {{ krb5_kdc | default('kdc.' + krb5_realm.lower()) }}
+        default_domain = {{ krb5_domain | default(krb5_realm.lower()) }}
+    }
+
+[domain_realm]
+    .{{ krb5_domain | default(krb5_realm.lower()) }} = {{ krb5_realm }}
+    {{ krb5_domain | default(krb5_realm.lower()) }} = {{ krb5_realm }}
+
+[logging]
+    kdc = FILE:/var/log/krb5/krb5kdc.log
+    admin_server = FILE:/var/log/krb5/kadmind.log
+    default = FILE:/var/log/krb5/krb5lib.log

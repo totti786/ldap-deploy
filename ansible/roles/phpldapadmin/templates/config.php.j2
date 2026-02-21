@@ -1,0 +1,25 @@
+<?php
+
+$config->custom->appearance['friendly_attrs'] = array(
+    'facsimileTelephoneNumber' => 'Fax',
+    'uid'                      => 'User Name',
+    'mail'                     => 'Email',
+    'telephoneNumber'          => 'Phone Number',
+    'cn'                       => 'Full Name',
+    'gidNumber'                => 'Group ID',
+    'uidNumber'                => 'User ID',
+    'homeDirectory'            => 'Home Directory',
+    'loginShell'               => 'Login Shell',
+    'memberOf'                 => 'Group Membership'
+);
+
+$servers = new Datastore();
+$servers->newServer('ldap_pla');
+$servers->setValue('server','name','OpenLDAP Server');
+$servers->setValue('server','host','{{ ldap_server | default("localhost") }}');
+$servers->setValue('server','port',389);
+$servers->setValue('server','base',array('{{ ldap_base_dn }}'));
+$servers->setValue('login','auth_type','session');
+$servers->setValue('login','attr','dn');
+$config->custom->appearance['hide_template_warning'] = true;
+?>

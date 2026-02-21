@@ -1,0 +1,13 @@
+Alias /phpldapadmin /usr/share/phpldapadmin/htdocs
+
+<Directory /usr/share/phpldapadmin/htdocs>
+    Options FollowSymLinks
+    AllowOverride None
+    Require all granted
+    
+    <IfModule mod_authz_core.c>
+        Require local
+        Require ip 192.168.0.0/16
+        Require ip 10.0.0.0/8
+    </IfModule>
+</Directory>

@@ -1,0 +1,59 @@
+---
+- name: Install UFW
+  package:
+    name: ufw
+    state: present
+  tags:
+    - packages
+
+- name: Allow SSH
+  ufw:
+    rule: allow
+    name: OpenSSH
+  tags:
+    - rules
+
+- name: Allow LDAP ports
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - 389
+    - 636
+  when: "'ldap_servers' in group_names"
+  tags:
+    - rules
+
+- name: Allow Kerberos ports
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: "{{ item.endswith('udp') | ternary('udp', 'tcp') }}"
+  loop:
+    - 88
+    - 464
+    - 749
+  when: "'kerberos' in group_names"
+  tags:
+    - rules
+
+- name: Allow Samba ports
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - 139
+    - 445
+  when: "'samba' in group_names"
+  tags:
+    - rules
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  tags:
+    - enable

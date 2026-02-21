@@ -1,0 +1,42 @@
+---
+- name: Install phpLDAPadmin
+  package:
+    name:
+      - phpldapadmin
+    state: present
+  tags:
+    - packages
+
+- name: Configure phpLDAPadmin
+  template:
+    src: config.php.j2
+    dest: /etc/phpldapadmin/config.php
+    mode: '0644'
+  notify: Restart apache2
+  tags:
+    - configuration
+
+- name: Configure Apache for phpLDAPadmin
+  template:
+    src: phpldapadmin.conf.j2
+    dest: /etc/apache2/conf-available/phpldapadmin.conf
+    mode: '0644'
+  notify: Restart apache2
+  tags:
+    - configuration
+
+- name: Enable Apache site
+  command: a2enconf phpldapadmin
+  args:
+    creates: /etc/apache2/conf-enabled/phpldapadmin.conf
+  notify: Restart apache2
+  tags:
+    - configuration
+
+- name: Enable and start Apache
+  service:
+    name: apache2
+    state: started
+    enabled: true
+  tags:
+    - service

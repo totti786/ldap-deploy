@@ -1,0 +1,31 @@
+Port 22
+AddressFamily any
+ListenAddress 0.0.0.0
+ListenAddress ::
+
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+PermitRootLogin {{ ssh_config.PermitRootLogin | default('no') }}
+StrictModes yes
+MaxAuthTries 3
+MaxSessions 10
+
+PubkeyAuthentication {{ ssh_config.PubkeyAuthentication | default('yes') }}
+PasswordAuthentication {{ ssh_config.PasswordAuthentication | default('no') }}
+
+AuthorizedKeysFile .ssh/authorized_keys
+
+HostbasedAuthentication no
+IgnoreRhosts yes
+
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+
+UsePAM yes
+
+X11Forwarding {{ ssh_config.X11Forwarding | default('no') }}
+PrintMotd no
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/lib/openssh/sftp-server

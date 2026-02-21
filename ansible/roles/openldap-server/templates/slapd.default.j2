@@ -1,0 +1,6 @@
+SLAPD_CONF=
+SLAPD_USER=openldap
+SLAPD_GROUP=openldap
+SLAPD_PIDFILE=/run/slapd/slapd.pid
+SLAPD_SERVICES="ldap:/// ldapi:/// ldaps:///"
+SLAPD_OPTIONS="-4 -h 'ldap://$HOSTNAME ldaps://$HOSTNAME ldapi:///' -f /etc/ldap/slapd.d"

@@ -1,0 +1,6 @@
+127.0.0.1   localhost
+::1         localhost ip6-localhost ip6-loopback
+
+{% for host in groups['all'] %}
+{{ hostvars[host]['ansible_host'] }} {{ host }} {{ host }}.{{ ldap_domain | default('example.com') }}
+{% endfor %}

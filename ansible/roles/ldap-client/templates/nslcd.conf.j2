@@ -1,0 +1,15 @@
+uid nslcd
+gid nslcd
+ldap_uri {{ ldap_server_uri | default('ldap://ldap.example.com') }}
+ldap_version 3
+base {{ ldap_base_dn }}
+binddn {{ ldap_bind_dn | default('cn=admin,dc=example,dc=com') }}
+bindpw {{ ldap_bind_password }}
+
+scope sub
+timelimit 30
+bind_timelimit 30
+
+ssl start_tls
+tls_reqcert demand
+tls_cacertfile /etc/ssl/certs/ca-certificates.crt

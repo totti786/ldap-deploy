@@ -1,0 +1,19 @@
+[kdcdefaults]
+    kdc_ports = 88
+    kdc_tcp_ports = 88
+    restrict_anonymous_to_realms = {{ krb5_realm }}
+    spake_preauth_groups = edwards25519
+
+[realms]
+    {{ krb5_realm }} = {
+        database_name = /var/lib/krb5kdc/principal
+        key_stash_file = /etc/krb5kdc/.k5.{{ krb5_realm }}
+        max_life = {{ krb5_max_life | default('24h 0m 0s') }}
+        max_renewable_life = {{ krb5_max_renewable_life | default('7d 0h 0m 0s') }}
+        master_key_type = aes256-cts-hmac-sha1-96
+        supported_enctypes = aes256-cts-hmac-sha1-96:normal aes128-cts-hmac-sha1-96:normal
+        default_principal_flags = +preauth
+        acl_file = /etc/krb5kdc/kadm5.acl
+        dict_file = /usr/share/dict/words
+        admin_keytab = /etc/krb5kdc/kadm5.keytab
+    }
